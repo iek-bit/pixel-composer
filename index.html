@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pixel Composer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0e0e0e;
+    --bg2:       #161616;
+    --bg3:       #1f1f1f;
+    --border:    rgba(255,255,255,0.08);
+    --border2:   rgba(255,255,255,0.15);
+    --text:      #f0ede8;
+    --text2:     #888;
+    --text3:     #555;
+    --accent:    #c8b89a;
+    --danger:    #c0544a;
+  }
+
+  html { font-size: 16px; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 3rem 2rem;
+  }
+
+  #app {
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  header {
+    margin-bottom: 2.5rem;
+  }
+
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(32px, 5vw, 48px);
+    font-weight: 400;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .tagline {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--text3);
+    text-transform: uppercase;
+  }
+
+  /* Drop zone */
+  #drop-zone {
+    border: 0.5px dashed var(--border2);
+    border-radius: 16px;
+    padding: 4rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    margin-bottom: 1.5rem;
+    position: relative;
+    background: var(--bg2);
+  }
+
+  #drop-zone:hover { background: var(--bg3); border-color: var(--accent); }
+  #drop-zone.drag-over { background: rgba(200,184,154,0.05); border-color: var(--accent); }
+
+  #drop-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .drop-icon {
+    display: block;
+    font-size: 40px;
+    margin-bottom: 1rem;
+    color: var(--accent);
+  }
+
+  .drop-title {
+    font-size: 14px;
+    color: var(--text);
+    margin-bottom: 6px;
+    font-weight: 400;
+  }
+
+  .drop-sub {
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.06em;
+  }
+
+  /* Preview section */
+  #preview-section { display: none; }
+  #preview-section.visible { display: block; }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+
+  @media (max-width: 620px) { .two-col { grid-template-columns: 1fr; } }
+
+  #img-preview {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 0.5px solid var(--border);
+    display: block;
+  }
+
+  .side-panels { display: flex; flex-direction: column; gap: 1rem; }
+
+  .panel {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+  }
+
+  .panel-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+
+  .param-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    border-bottom: 0.5px solid var(--border);
+    font-size: 12px;
+  }
+
+  .param-row:last-child { border-bottom: none; }
+  .param-key { color: var(--text2); }
+  .param-val { color: var(--text); font-weight: 400; }
+
+  .swatch-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+
+  .swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    border: 0.5px solid var(--border2);
+    transition: transform 0.15s;
+  }
+
+  .swatch:hover { transform: scale(1.15); }
+
+  /* Sliders */
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-size: 12px;
+  }
+
+  .slider-row:last-child { margin-bottom: 0; }
+
+  .slider-row label {
+    color: var(--text2);
+    min-width: 88px;
+    font-size: 11px;
+  }
+
+  .slider-row input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 3px;
+    background: var(--border2);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  .slider-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: none;
+  }
+
+  .slider-row span {
+    min-width: 34px;
+    text-align: right;
+    color: var(--accent);
+    font-size: 11px;
+  }
+
+  /* Music params grid */
+  .music-params {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .metric-card {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+  }
+
+  .metric-label {
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--text3);
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+
+  .metric-val {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: 400;
+    color: var(--text);
+  }
+
+  /* Status */
+  #status {
+    font-size: 12px;
+    color: var(--text2);
+    margin-bottom: 1rem;
+    min-height: 18px;
+    letter-spacing: 0.04em;
+  }
+
+  /* Visualizer */
+  .viz-wrap {
+    background: var(--bg2);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  canvas#viz {
+    width: 100%;
+    height: 64px;
+    display: block;
+    border-radius: 6px;
+  }
+
+  canvas#pixel-strip {
+    width: 100%;
+    height: 20px;
+    border-radius: 6px;
+    display: block;
+    margin-top: 8px;
+    border: 0.5px solid var(--border);
+  }
+
+  .progress-bar {
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.08s linear;
+    border-radius: 2px;
+  }
+
+  /* Buttons */
+  .btn-row {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  button {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    padding: 9px 20px;
+    border-radius: 8px;
+    border: 0.5px solid var(--border2);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s, border-color 0.15s;
+  }
+
+  button:hover { background: var(--bg3); border-color: var(--accent); }
+  button:active { transform: scale(0.97); }
+  button:disabled { opacity: 0.3; cursor: default; transform: none; }
+
+  button.primary {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+    font-weight: 400;
+  }
+
+  button.primary:hover { opacity: 0.85; background: var(--accent); }
+  button.danger { border-color: rgba(192,84,74,0.4); color: var(--danger); }
+  button.danger:hover { background: rgba(192,84,74,0.08); border-color: var(--danger); }
+
+  /* Decorative background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #app { position: relative; z-index: 1; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Pixel <em>Composer</em></h1>
+    <p class="tagline">pure algorithm — no ai, no network required</p>
+  </header>
+
+  <div id="drop-zone">
+    <input type="file" id="file-input" accept="image/*" />
+    <span class="drop-icon">◈</span>
+    <p class="drop-title">drop an image here</p>
+    <p class="drop-sub">or click to browse — jpg, png, gif, webp</p>
+  </div>
+
+  <div id="preview-section">
+
+    <div class="two-col">
+      <img id="img-preview" src="" alt="preview" />
+      <div class="side-panels">
+        <div class="panel">
+          <div class="panel-label">pixel analysis</div>
+          <div id="analysis-rows"></div>
+          <div class="swatch-row" id="swatches"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-label">tuning</div>
+          <div class="slider-row">
+            <label>note count</label>
+            <input type="range" id="s-notes" min="8" max="64" value="32" step="1" />
+            <span id="v-notes">32</span>
+          </div>
+          <div class="slider-row">
+            <label>octave range</label>
+            <input type="range" id="s-oct" min="1" max="4" value="2" step="1" />
+            <span id="v-oct">2</span>
+          </div>
+          <div class="slider-row">
+            <label>reverb</label>
+            <input type="range" id="s-rev" min="0" max="100" value="30" step="1" />
+            <span id="v-rev">30%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="music-params" id="music-params" style="display:none">
+      <div class="metric-card"><div class="metric-label">tempo</div><div class="metric-val" id="p-tempo">—</div></div>
+      <div class="metric-card"><div class="metric-label">key</div><div class="metric-val" id="p-key">—</div></div>
+      <div class="metric-card"><div class="metric-label">mode</div><div class="metric-val" id="p-mode">—</div></div>
+      <div class="metric-card"><div class="metric-label">scale</div><div class="metric-val" id="p-scale">—</div></div>
+      <div class="metric-card"><div class="metric-label">brightness</div><div class="metric-val" id="p-bright">—</div></div>
+      <div class="metric-card"><div class="metric-label">contrast</div><div class="metric-val" id="p-contrast">—</div></div>
+    </div>
+
+    <p id="status"></p>
+
+    <div class="viz-wrap" id="viz-wrap" style="display:none">
+      <canvas id="viz"></canvas>
+      <canvas id="pixel-strip"></canvas>
+      <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="primary" id="btn-play" disabled>generate &amp; play</button>
+      <button id="btn-stop" disabled>stop</button>
+      <button class="danger" id="btn-reset">reset</button>
+    </div>
+
+  </div>
+</div>
+
+<canvas id="hidden-canvas" style="display:none"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+
+const fileInput   = $('file-input');
+const dropZone    = $('drop-zone');
+const imgPreview  = $('img-preview');
+const previewSection = $('preview-section');
+const hiddenCanvas = $('hidden-canvas');
+const btnPlay  = $('btn-play');
+const btnStop  = $('btn-stop');
+const btnReset = $('btn-reset');
+const statusEl = $('status');
+const progressEl = $('progress');
+
+let imgLoaded = false;
+let isPlaying = false;
+let scheduledEvents = [];
+let synth = null, reverb = null, analyzer = null, animFrame = null;
+let pixelData = null, imageAnalysis = null;
+
+// Slider wiring
+[['s-notes','v-notes', v=>v],
+ ['s-oct',  'v-oct',   v=>v],
+ ['s-rev',  'v-rev',   v=>v+'%']
+].forEach(([sid,vid,fmt]) => {
+  const s=$(sid), v=$(vid);
+  s.addEventListener('input', () => { v.textContent = fmt(s.value); });
+});
+
+function setStatus(msg) { statusEl.textContent = msg; }
+
+// ── File loading ────────────────────────────────────────────────────────────
+function loadImage(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      imgPreview.src = e.target.result;
+      previewSection.classList.add('visible');
+      extractPixels(img);
+      imgLoaded = true;
+      btnPlay.disabled = false;
+      setStatus('image loaded — press generate & play');
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+fileInput.addEventListener('change', e => { if(e.target.files[0]) loadImage(e.target.files[0]); });
+dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  if(e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0]);
+});
+
+// ── Pixel extraction ─────────────────────────────────────────────────────────
+function extractPixels(img) {
+  const SIZE = 100;
+  hiddenCanvas.width = SIZE; hiddenCanvas.height = SIZE;
+  const ctx = hiddenCanvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, SIZE, SIZE);
+  pixelData = ctx.getImageData(0, 0, SIZE, SIZE).data;
+  imageAnalysis = analyzePixels(pixelData, SIZE);
+  displayAnalysis(imageAnalysis);
+}
+
+// ── Color math ───────────────────────────────────────────────────────────────
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h, s, l = (max+min)/2;
+  if(max === min) { h = s = 0; } else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch(max) {
+      case r: h = ((g-b)/d + (g<b ? 6 : 0)) / 6; break;
+      case g: h = ((b-r)/d + 2) / 6; break;
+      case b: h = ((r-g)/d + 4) / 6; break;
+    }
+  }
+  return [h * 360, s, l];
+}
+
+// ── Image analysis ────────────────────────────────────────────────────────────
+function analyzePixels(data, size) {
+  let totalH=0, totalS=0, totalL=0, count=0;
+  const hBuckets = new Array(12).fill(0);
+  const brightnesses = [];
+  const kColors = [];
+
+  for(let i = 0; i < data.length; i += 4) {
+    const r=data[i], g=data[i+1], b=data[i+2];
+    const [h,s,l] = rgbToHsl(r,g,b);
+    totalH += h; totalS += s; totalL += l;
+    brightnesses.push(l);
+    hBuckets[Math.floor(h/30) % 12]++;
+    if(i % (4*10) === 0) kColors.push([r,g,b]);
+    count++;
+  }
+
+  const avgH = totalH/count;
+  const avgS = totalS/count;
+  const avgL = totalL/count;
+
+  const variance = brightnesses.reduce((acc,l) => acc+(l-avgL)**2, 0) / brightnesses.length;
+  const contrast = Math.sqrt(variance);
+
+  const domBucket = hBuckets.indexOf(Math.max(...hBuckets));
+  const domHue = domBucket * 30;
+
+  // palette: 5 evenly-spaced samples
+  const step = Math.floor(kColors.length/5);
+  const palette = Array.from({length:5}, (_,i) => kColors[i*step] || kColors[0]);
+
+  // edge detection
+  let edgeSum = 0, edgeCount = 0;
+  for(let y = 0; y < size-1; y++) {
+    for(let x = 0; x < size-1; x++) {
+      const i  = (y*size + x)*4;
+      const ir = (y*size + x+1)*4;
+      const ib = ((y+1)*size + x)*4;
+      edgeSum += (Math.abs(data[i]-data[ir]) + Math.abs(data[i+1]-data[ir+1]) + Math.abs(data[i+2]-data[ir+2]) +
+                  Math.abs(data[i]-data[ib]) + Math.abs(data[i+1]-data[ib+1]) + Math.abs(data[i+2]-data[ib+2])) / 2;
+      edgeCount++;
+    }
+  }
+  const edgeDensity = edgeSum / (edgeCount * 255 * 3);
+
+  // Music mappings
+  const tempo = Math.round(60 + avgL*60 + edgeDensity*40);
+  const keys = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const key = keys[Math.round(domHue/30) % 12];
+  const isWarm = (domHue < 70 || domHue > 290);
+  const mode = isWarm ? 'major' : 'minor';
+  const scale = avgS < 0.25 ? 'pentatonic' : 'diatonic';
+
+  return { avgH, avgS, avgL, contrast, domHue, palette, edgeDensity, tempo, key, mode, scale };
+}
+
+// ── Display ──────────────────────────────────────────────────────────────────
+function displayAnalysis(a) {
+  const rows = [
+    ['avg hue',    Math.round(a.avgH) + '°'],
+    ['saturation', Math.round(a.avgS*100) + '%'],
+    ['brightness', Math.round(a.avgL*100) + '%'],
+    ['contrast',   Math.round(a.contrast*100) + '%'],
+    ['edge density', Math.round(a.edgeDensity*100) + '%'],
+  ];
+  $('analysis-rows').innerHTML = rows.map(([k,v]) =>
+    `<div class="param-row"><span class="param-key">${k}</span><span class="param-val">${v}</span></div>`
+  ).join('');
+  $('swatches').innerHTML = a.palette.map(([r,g,b]) =>
+    `<div class="swatch" style="background:rgb(${r},${g},${b})" title="rgb(${r},${g},${b})"></div>`
+  ).join('');
+
+  $('p-tempo').textContent   = a.tempo + ' bpm';
+  $('p-key').textContent     = a.key;
+  $('p-mode').textContent    = a.mode;
+  $('p-scale').textContent   = a.scale;
+  $('p-bright').textContent  = Math.round(a.avgL*100) + '%';
+  $('p-contrast').textContent = Math.round(a.contrast*100) + '%';
+  $('music-params').style.display = 'grid';
+}
+
+// ── Melody builder ────────────────────────────────────────────────────────────
+const SCALES = {
+  pentatonic: [0,2,4,7,9],
+  diatonic:   [0,2,4,5,7,9,11],
+};
+const MINOR_DIATONIC = [0,2,3,5,7,8,10];
+const NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+
+function buildMelody(analysis, noteCount, octaveRange) {
+  const { key, mode, scale, avgL, contrast, edgeDensity } = analysis;
+  const rootIdx = NOTE_NAMES.indexOf(key);
+
+  let intervals = SCALES[scale] || SCALES.diatonic;
+  if(mode === 'minor' && scale === 'diatonic') intervals = MINOR_DIATONIC;
+
+  const baseOctave = Math.round(3 + avgL);
+  const pool = [];
+  for(let oct = baseOctave; oct < baseOctave + octaveRange; oct++) {
+    for(const interval of intervals) {
+      pool.push(NOTE_NAMES[(rootIdx+interval) % 12] + oct);
+    }
+  }
+
+  const SIZE = 100;
+  const melody = [];
+
+  for(let i = 0; i < noteCount; i++) {
+    const x = Math.floor((i/noteCount) * SIZE);
+    const y = Math.floor(SIZE/2);
+    const idx = (y*SIZE + x)*4;
+    const r=pixelData[idx], g=pixelData[idx+1], b=pixelData[idx+2];
+    const [h, s, l] = rgbToHsl(r, g, b);
+
+    // hue → scale degree
+    const scaleDegree = Math.floor((h/360) * intervals.length) % intervals.length;
+    // brightness → octave offset
+    const octOff = Math.floor(l * octaveRange);
+    const noteIdx = Math.min(scaleDegree + octOff * intervals.length, pool.length-1);
+
+    // saturation → duration
+    let dur;
+    if(s < 0.2)       dur = '2n';
+    else if(s < 0.45) dur = '4n';
+    else if(s < 0.7)  dur = '8n';
+    else              dur = '16n';
+
+    // brightness → velocity
+    const velocity = Math.max(0.2, Math.min(1.0, 0.3 + l*0.7 + contrast*0.3));
+
+    melody.push({ note: pool[noteIdx], dur, velocity, r, g, b });
+  }
+  return melody;
+}
+
+// ── Playback ─────────────────────────────────────────────────────────────────
+async function playMusic() {
+  if(!imgLoaded || !imageAnalysis) return;
+  stopMusic();
+  await Tone.start();
+
+  const noteCount   = parseInt($('s-notes').value);
+  const octaveRange = parseInt($('s-oct').value);
+  const reverbAmt   = parseInt($('s-rev').value) / 100;
+
+  const melody = buildMelody(imageAnalysis, noteCount, octaveRange);
+
+  reverb = new Tone.Reverb({ decay: reverbAmt * 5 + 0.5, wet: reverbAmt }).toDestination();
+  const vol = new Tone.Volume(-4).connect(reverb);
+  analyzer = new Tone.Analyser('waveform', 256);
+
+  synth = new Tone.PolySynth(Tone.Synth, {
+    oscillator: { type: imageAnalysis.avgS > 0.5 ? 'sawtooth' : 'triangle' },
+    envelope: { attack: 0.02, decay: 0.3, sustain: 0.4, release: 1.0 }
+  });
+  synth.connect(vol);
+  synth.connect(analyzer);
+
+  Tone.Transport.bpm.value = imageAnalysis.tempo;
+  Tone.Transport.cancel();
+
+  const durMap = {
+    '16n': 60/imageAnalysis.tempo*0.25,
+    '8n':  60/imageAnalysis.tempo*0.5,
+    '4n':  60/imageAnalysis.tempo,
+    '2n':  60/imageAnalysis.tempo*2,
+  };
+  const totalDur = melody.reduce((acc,m) => acc+durMap[m.dur], 0);
+
+  let time = Tone.now() + 0.05;
+  melody.forEach((m, i) => {
+    const d = durMap[m.dur];
+    scheduledEvents.push(Tone.Transport.schedule(t => {
+      try { synth.triggerAttackRelease(m.note, m.dur, t, m.velocity); } catch(e) {}
+      const pct = melody.slice(0,i).reduce((a,x)=>a+durMap[x.dur],0) / totalDur * 100;
+      progressEl.style.width = Math.round(pct) + '%';
+    }, time));
+    time += d;
+  });
+
+  // loop
+  scheduledEvents.push(Tone.Transport.schedule(() => {
+    progressEl.style.width = '100%';
+    setTimeout(() => { if(isPlaying) { progressEl.style.width='0%'; playMusic(); } }, 600);
+  }, time));
+
+  Tone.Transport.start();
+  isPlaying = true;
+  btnPlay.disabled = true;
+  btnStop.disabled = false;
+  $('viz-wrap').style.display = 'block';
+  drawPixelStrip(melody);
+  drawViz();
+  setStatus(`playing — ${imageAnalysis.key} ${imageAnalysis.mode}, ${imageAnalysis.tempo} bpm, ${noteCount} notes`);
+}
+
+function stopMusic() {
+  scheduledEvents.forEach(id => Tone.Transport.clear(id));
+  scheduledEvents = [];
+  Tone.Transport.stop();
+  Tone.Transport.cancel();
+  if(synth)    { try{synth.releaseAll();}catch(e){} synth.dispose(); synth=null; }
+  if(reverb)   { reverb.dispose(); reverb=null; }
+  if(analyzer) { analyzer.dispose(); analyzer=null; }
+  if(animFrame){ cancelAnimationFrame(animFrame); animFrame=null; }
+  isPlaying = false;
+  btnPlay.disabled = false;
+  btnStop.disabled = true;
+  progressEl.style.width = '0%';
+  setStatus('stopped — adjust sliders and play again to remix');
+}
+
+// ── Visualizers ───────────────────────────────────────────────────────────────
+function drawPixelStrip(melody) {
+  const canvas = $('pixel-strip');
+  canvas.width  = canvas.offsetWidth  * window.devicePixelRatio;
+  canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  const w = W / melody.length;
+  melody.forEach((m, i) => {
+    ctx.fillStyle = `rgb(${m.r},${m.g},${m.b})`;
+    ctx.fillRect(i*w, 0, w+1, H);
+  });
+}
+
+function drawViz() {
+  const canvas = $('viz');
+  canvas.width  = canvas.offsetWidth  * window.devicePixelRatio;
+  canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    if(!analyzer || !isPlaying) { animFrame=null; return; }
+    const vals = analyzer.getValue();
+    ctx.beginPath();
+    ctx.strokeStyle = '#c8b89a';
+    ctx.lineWidth = 1.5;
+    vals.forEach((v, i) => {
+      const x = (i/vals.length) * W;
+      const y = H/2 + v * H * 0.42;
+      i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    animFrame = requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+btnPlay.addEventListener('click', playMusic);
+btnStop.addEventListener('click', stopMusic);
+btnReset.addEventListener('click', () => {
+  stopMusic();
+  imgLoaded = false; pixelData = null; imageAnalysis = null;
+  imgPreview.src = '';
+  previewSection.classList.remove('visible');
+  $('analysis-rows').innerHTML = '';
+  $('swatches').innerHTML = '';
+  $('music-params').style.display = 'none';
+  $('viz-wrap').style.display = 'none';
+  fileInput.value = '';
+  setStatus('');
+});
+</script>
+</body>
+</html>
